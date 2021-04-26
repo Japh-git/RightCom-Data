@@ -1,0 +1,59 @@
+node{
+stage("Pull") {
+    try {
+        git url: 'http://192.168.86.16:8929/yang49/todo.git'
+    } catch(e){
+        echo e.toString()
+        error "Pull failed"
+        throw e
+    }
+}
+
+stage("Build") {
+    try{
+      withEnv([
+        "VERSION=$BUILD_NUMBER"
+      ]){
+        sh "docker build -t todo:$VERSION ."
+      }
+    }catch(e){
+        error "Build & Push failed"
+    }
+  }
+  
+ stage("Deploy") {
+    try{
+      withEnv([
+        "DOCKER_HOST=tcp://192.168.86.17:2376"
+      ]){
+        CHECK_IF_EXISTS = sh label: '', returnStatus: true, script: 'docker container inspect -f State pythoning'
+      }
+      echo "CHECK_IF_EXISTS IS: ${CHECK_IF_EXISTS}"
+      if(CHECK_IF_EXISTS!=0){
+        try{
+          withEnv([
+            "VERSION=$BUILD_NUMBER"
+          ]){
+            sh "docker run -d --name pythoning -p 5000:5000 todo:$VERSION"
+          }
+        }catch(e){
+          error "Docker run failed"
+        }
+      }else{
+        try{
+          withEnv([
+            "VERSION=$BUILD_NUMBER"
+          ]){
+            sh "docker rm -f pythoning"
+            sh "docker run -d --name pythoning -p 5000:5000 todo:$VERSION"
+          }
+        }catch(e){
+          error "Docker update failed "
+        }
+      }
+    }catch(e){
+      error "Deploy failed"
+    }
+  }
+
+}
