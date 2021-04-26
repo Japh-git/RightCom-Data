@@ -1,0 +1,48 @@
+owasp-zap:
+  stage: DAST
+  image: owasp/zap2docker-stable:2.7.0
+  variables:
+    zap_host: "http://127.0.0.1"
+    zap_port: "8090"
+    zap_config_files: "ZAP/gitlab_common.properties"
+
+    # URLs
+    project_url: "http://my.url.com"
+    starting_point: "${project_url}"
+
+    # Authentication
+    auth_type: "form"
+    auth_form_url: "${project_url}/login"
+    auth_form_username_parameter: "username"
+    auth_form_password_parameter: "password"
+    logged_in_indicator_regex: ""
+    logged_out_indicator_regex: "\\Qplaceholder: \"Password\"\\E"
+    user_name: "zapdemo"
+    # fetched from gitlab secret variables
+    password: "${ZAP_USER_PASSWORD}"
+
+    # Session
+    session_source: "load"
+    zap_session: "${CI_PROJECT_DIR}/ZAP/session/mysession"
+
+    # Context
+    context_source: "default"
+    zap_context_excludes: "${project_url}/admin"
+
+    # Scan types
+    zap_enable_spider_scan: "false"
+    zap_enable_active_scan: "true"
+
+    # Report
+    zap_scanning_report_name: "GITLAB_ZAP_VULNERABILITY_REPORT"
+    zap_scanning_report_extension: "html"
+
+  script:
+    - ./ZAP/zap-scan.sh
+  artifacts:
+    paths:
+      - GITLAB_ZAP_VULNERABILITY_REPORT.html
+      - zap.log
+      - zap_execution_report.html
+
+      
